@@ -1,3 +1,3 @@
 ##quad1d
 
-Efficient 1D numerical integration of complex-valued functions.
+A collection of C routines (requires C99 up) and C++ wrappers (requires C++11 up) for 1D numerical integrations of complex-valued functions.
