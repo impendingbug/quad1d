@@ -2,7 +2,7 @@
  *  \file  cr_qag.c
  *  \brief  Implementation of a 1D adaptive quadrature for complex-valued functions with real-valued free parameters.
  *
- * Based on QAG adaptive quadrature of GSL library.
+ * A non-trivial extension of QAG adaptive quadrature of GSL library.
  *
  *  \author  Sandy Pratama
  *
