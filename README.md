@@ -13,3 +13,41 @@ Still I was a happy camper, until the primary bottleneck in my calculation was e
 
 ##Usage Examples
 Let us consider the integral `$\int_0^1 \frac{ \log(1+x) }{ (1+x)^{\mu+1} }$` with `$\mu$` being a complex number, which has a simple closed-form solution,
+```C++
+#include "quad1d/quad1d.hpp"
+#include <cmath>
+#include <complex>
+#include <cstddef>
+#include <iostream>
+
+using namespace std;
+
+complex<double> f_expected(complex<double> mu) {  //the closed-form solution
+    auto temp = pow(2., mu);
+    return -log(2.) / (temp * mu) + (temp - 1.) / (temp * mu * mu);
+}
+complex<double> f_integrand(double x, complex<double> mu) {  //the integrand
+    return log(1. + x) / pow(1. + x, mu + 1.);
+}
+struct Ftor {  //a wrapper functor
+    explicit Ftor(complex<double> mu): mu(mu) { }
+    complex<double> operator()(double x) const { ++counter; return f_integrand(x, mu); }
+    complex<double> mu;
+    mutable size_t counter {0};
+};
+
+int main() {
+    cout.precision(17); cout << scientific;
+
+    auto mu = 40. + complex<double>(0.,1.) * 500.;  //a high value of mu yields a rapidly-varying integrand
+    Ftor integrand(mu);
+    cout << "Expected value = " << f_expected(mu) << endl;
+    
+    quad1d::Cag<Ftor> quad;
+    complex<double> abserr;
+    auto res = quad.integrate(integrand, 0., 1., abserr);
+    cout << "Result = " << res << endl;
+    cout << "Estimated error = " << abserr << endl;
+    cout << "Number of function evaluations = " << integrand.counter << endl;
+}
+```
