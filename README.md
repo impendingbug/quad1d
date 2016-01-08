@@ -17,37 +17,54 @@ Let us consider the integral `$\int_0^1 \frac{ \log(1+x) }{ (1+x)^{\mu+1} }$` wi
 #include "quad1d/quad1d.hpp"
 #include <cmath>
 #include <complex>
-#include <cstddef>
 #include <iostream>
 
 using namespace std;
 
-complex<double> f_expected(complex<double> mu) {  //the closed-form solution
+complex<double> f_expected(const complex<double>& mu) {  //the closed-form solution
     auto temp = pow(2., mu);
     return -log(2.) / (temp * mu) + (temp - 1.) / (temp * mu * mu);
 }
-complex<double> f_integrand(double x, complex<double> mu) {  //the integrand
+complex<double> f_integrand(double x, const complex<double>& mu) {  //the integrand
     return log(1. + x) / pow(1. + x, mu + 1.);
 }
 struct Ftor {  //a wrapper functor
-    explicit Ftor(complex<double> mu): mu(mu) { }
-    complex<double> operator()(double x) const { ++counter; return f_integrand(x, mu); }
+    explicit Ftor(const complex<double>& mu): mu(mu) { }
+    complex<double> operator()(double x) const { return f_integrand(x, mu); }
     complex<double> mu;
-    mutable size_t counter {0};
 };
+complex<double> mu_global;  //not recommended, only for illustration
+complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  //a dumb wrapper function
 
 int main() {
     cout.precision(17); cout << scientific;
-
-    auto mu = 40. + complex<double>(0.,1.) * 500.;  //a high value of mu yields a rapidly-varying integrand
-    Ftor integrand(mu);
+    const auto mu = 40. + complex<double>(0., 1.) * 500.;  //a high value of mu = a rapidly-varying integrand
     cout << "Expected value = " << f_expected(mu) << endl;
-    
-    quad1d::Cag<Ftor> quad;
+
+    Ftor ftor_integrand(mu);
+    quad1d::Cag<Ftor> quad;  //does "proper" adaptive quadrature, taking Ftor objects as integrands
+    //      ^ explicit Cag<Ftor>(complex<double> epsrel = {1.E-10, 1.E-10}, complex<double> epsabs = {0., 0.},
+    //                           std::size_t max_limit = 2000, GK_rule rule = GK_rule::GK31)
+    // The real (imaginary) part of epsrel and epsabs are used in integration of the real (imaginary) part
     complex<double> abserr;
-    auto res = quad.integrate(integrand, 0., 1., abserr);
+    auto res = quad.integrate(ftor_integrand, 0., 1., abserr);
+    //         ^ complex<double> Cag<Ftor>::integrate(const Ftor& integrand, double a, double b,
+    //                                                complex<double>& abserr, std::size_t limit = 2000)
     cout << "Result = " << res << endl;
     cout << "Estimated error = " << abserr << endl;
-    cout << "Number of function evaluations = " << integrand.counter << endl;
+
+    // Other callables are also fine, provided you give quad1d::Cag the correct template type argument, e.g.,
+    // A raw function:
+    quad1d::Cag<> r_quad;  //uses the default type argument
+    mu_global = mu;
+    res = r_quad.integrate(dumb_integrand, 0., 1., abserr);
+    // A lambda expression:
+    auto l_integrand = [mu](double x){ return f_integrand(x, mu); };
+    quad1d::Cag<decltype(l_integrand)> l_quad;
+    res = l_quad.integrate(l_integrand, 0., 1., abserr);
+    // Or a std::function, if you have to:
+    function<complex<double>(double)> sf_integrand = l_integrand;
+    quad1d::Cag<decltype(sf_integrand)> sf_quad;
+    res = sf_quad.integrate(sf_integrand, 0., 1., abserr);
 }
 ```
