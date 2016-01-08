@@ -33,7 +33,7 @@ struct Ftor {  //a wrapper functor
     complex<double> operator()(double x) const { return f_integrand(x, mu); }
     complex<double> mu;
 };
-complex<double> mu_global;  //not recommended, only for illustration
+complex<double> mu_global;  //not recommended, only for illustration (see below)
 complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  //a dumb wrapper function
 
 int main() {
@@ -53,7 +53,16 @@ int main() {
     cout << "Result = " << res << endl;
     cout << "Estimated error = " << abserr << endl;
 
-    // Other callables are also fine, provided you give quad1d::Cag the correct template type argument, e.g.,
+}
+```
+On my PC, this outputs:
+```sh
+Expected value = (-3.92401191889583165e-06,-6.31885976678998859e-07)
+Result = (-3.92401191889603409e-06,-6.31885976679864209e-07)
+Estimated error = (2.30461538976541977e-17,3.88190305613418434e-17)
+```
+Note that `quad1d::Cag` can also be used for other callables, provided you give it the correct template type argument, e.g.,
+```C++
     // A raw function:
     quad1d::Cag<> r_quad;  //uses the default type argument
     mu_global = mu;
@@ -66,5 +75,4 @@ int main() {
     function<complex<double>(double)> sf_integrand = l_integrand;
     quad1d::Cag<decltype(sf_integrand)> sf_quad;
     res = sf_quad.integrate(sf_integrand, 0., 1., abserr);
-}
-```
+```    
