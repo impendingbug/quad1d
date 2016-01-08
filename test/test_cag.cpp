@@ -36,7 +36,7 @@ struct Ftor {  //a wrapper functor
     complex<double> operator()(double x) const { return f_integrand(x, mu); }
     complex<double> mu;
 };
-complex<double> mu_global;  //not recommended, only for illustration
+complex<double> mu_global;  //not recommended, only for illustration purpose
 complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  //a dumb wrapper function
 
 int main() {
@@ -44,13 +44,12 @@ int main() {
     const auto mu = 40. + complex<double>(0., 1.) * 500.;  //a high value of mu = a rapidly-varying integrand
     cout << "Expected value = " << f_expected(mu) << endl;
 
-    Ftor ftor_integrand(mu);
     quad1d::Cag<Ftor> quad;  //does "proper" adaptive quadrature, taking Ftor objects as integrands
     //      ^ explicit Cag<Ftor>(complex<double> epsrel = {1.E-10, 1.E-10}, complex<double> epsabs = {0., 0.},
     //                           std::size_t max_limit = 2000, GK_rule rule = GK_rule::GK31)
     // The real (imaginary) part of epsrel and epsabs are used in integration of the real (imaginary) part
     complex<double> abserr;
-    auto res = quad.integrate(ftor_integrand, 0., 1., abserr);
+    auto res = quad.integrate(Ftor(mu), 0., 1., abserr);
     //         ^ complex<double> Cag<Ftor>::integrate(const Ftor& integrand, double a, double b,
     //                                                complex<double>& abserr, std::size_t limit = 2000)
     cout << "Result = " << res << endl;
