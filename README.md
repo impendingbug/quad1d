@@ -12,10 +12,10 @@ Let me elaborate a bit on that. In some cases I have encountered, a clean reform
 Still I was a happy camper, until the primary bottleneck in my calculation was exactly these wasted function evaluations. So I decided to trim some of my weekends and face it like a gentleman. Since then, I have used this "proper" adaptive quadrature extensively and have found no replacement for it. And although I am aware that my problem with conventional quadratures is an edge case which is unlikely to be of concern to most of their users, I figure it is still worth sharing considering the significant speedup it offers and the far-outweighed memory overhead it incurs. Finally, even if your integrands are too difficult for it, I am sure you will still benefit from the convenient C++ interface to the more-specialized quadratures from GSL.
 
 ##Usage Examples
+####Example 1
 Let us consider the integral `$\int_0^1 \frac{ \log(1+x) }{ (1+x)^{\mu+1} }$` with `$\mu$` being a complex number, which has a simple closed-form solution,
 ```C++
 #include "quad1d/quad1d.hpp"
-#include <cmath>
 #include <complex>
 #include <iostream>
 
@@ -33,8 +33,6 @@ struct Ftor {  //a wrapper functor
     complex<double> operator()(double x) const { return f_integrand(x, mu); }
     complex<double> mu;
 };
-complex<double> mu_global;  //not recommended, only for illustration purpose (see below)
-complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  //a dumb wrapper function
 
 int main() {
     cout.precision(17); cout << scientific;
@@ -51,7 +49,6 @@ int main() {
     //                                                complex<double>& abserr, std::size_t limit = 2000)
     cout << "Result = " << res << endl;
     cout << "Estimated error = " << abserr << endl;
-
 }
 ```
 On my PC, this outputs:
@@ -62,6 +59,9 @@ Estimated error = (2.30461538976541977e-17,3.88190305613418434e-17)
 ```
 Note that `quad1d::Cag` can also be used for other callables, provided you give it the correct template type argument, e.g.,
 ```C++
+complex<double> mu_global;  //not recommended, only for illustration purpose
+complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  //a dumb wrapper function
+...
     // A raw function:
     quad1d::Cag<> r_quad;  //uses the default type argument
     mu_global = mu;
@@ -74,5 +74,6 @@ Note that `quad1d::Cag` can also be used for other callables, provided you give 
     function<complex<double>(double)> sf_integrand = l_integrand;
     quad1d::Cag<decltype(sf_integrand)> sf_quad;
     res = sf_quad.integrate(sf_integrand, 0., 1., abserr);
-```    
-To compute integrals over **infinite** or **semi-infinite** intervals, you only need to explicitly set the upper or lower limit (or both) of the integral to negative or positive infinity. For this purpose, `quad1d::Cag` defines its own infinity types, so that it can enforce safe template instantiations. That is, depending on whether the upper or lower limit is finite, the compiler will instantiate the right overload of `quad1d::Cag::integrate` to do the job, while ensuring that only those pairs of integration limits that are supported will compile. 
+```
+####Example 2
+To compute integrals over **infinite** or **semi-infinite** intervals, you only need to explicitly set the upper or lower limit (or both) of the integral to negative or positive infinity. For this purpose, `quad1d::Cag` defines its own infinity types, so that it can enforce safe template instantiations. That is, depending on whether the upper or lower limit is finite, the compiler will instantiate the right overload of `quad1d::Cag::integrate` for the job, and only those pairs of integration limits that are supported will compile. 
