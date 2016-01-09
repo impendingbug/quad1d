@@ -78,7 +78,7 @@ complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  
 ####Example 2
 To compute integrals over **infinite** or **semi-infinite** intervals, you only need to explicitly set the upper or lower limit (or both) of the integral to negative or positive infinity. For this purpose, `quad1d::Cag` defines its own infinity types, so that it can enforce safe template instantiations. That is, depending on whether the upper or lower limit is finite, the compiler will instantiate the right overload of `quad1d::Cag::integrate` for the job, and only those pairs of integration limits that are supported will compile. As an example, let us compute $\int_{-\infty}^\infty \exp(-px^2 + qx) {\rm d}x$ for $\Re(p) > 0$,
 ```C++
-#include "quad1d.hpp"
+#include "quad1d/quad1d.hpp"
 #include <complex>
 #include <stdexcept>
 #include <iostream>
@@ -118,11 +118,60 @@ Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
 Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
 ```
 *Usage notes:*
-* The callables are passed to the `integrate` method by reference-to-`const`. A functor object passed to it thus must have a `const` overload of its `operator()`. But it need not be copy- nor move-constructible. I always find this more convenient. 
-* `quad1d::Cag` derives its interval-bisection procedure and error-estimation mechanism from [gsl_integration_qag](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). It is thus not intended for integrands containing singularities, for which `quad1d::Cag_gsl` is more suitable (see **Performance**).
-* Integrations over (semi-)infinite intervals involve variable transformations which might introduce integrable singularities in the integrands. In such cases, `quad1d::Cag_gsl` is the one to reach for as it internally uses [gsl_integration_qags](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) when handling (semi-)infinite intervals.
-* A `std::bad_alloc` instance is thrown if the constructor fails to allocate memory for integration workspace.
+* The callables are passed to the `integrate` method by a reference-to-`const`. A functor object passed to it thus must have a `const` overload of its `operator()`. But it need not be copy- nor move-constructible. I always find this more convenient. 
+* `quad1d::Cag` derives its interval-bisection procedure and error-estimation mechanism from [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). It is thus not intended for integrands containing singularities, for which `quad1d::Cag_gsl` is more suitable (see **Performance**).
+* Integrations over (semi-)infinite intervals involve variable transformations which might introduce integrable singularities in the integrands. In such cases, `quad1d::Cag_gsl` is the one to reach for as it internally uses [`gsl_integration_qags`](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) when handling (semi-)infinite intervals.
+* An instance of `std::bad_alloc` is thrown if the constructor fails to allocate memory for integration workspace.
 * The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be accessed if one uses the version of `integrate` that returns `void` (see `quad1d/quad1d.hpp`).
 * The C routines wrapped by `quad1d::Cag` are declared in `quad1d/cr_quad1d.h`. Its API closely follows the [quadratures from GSL](https://www.gnu.org/software/gsl/manual/html_node/Numerical-Integration.html#Numerical-Integration).
 
 ##Performance
+In the following, the performance of `quad1d::Cag` is compared against `quad1d::Cag_gsl`. The latter is a "smart" wrapper for [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html) which internally performs two independent real-domain integrations, each of which discards the real or imaginary component of the integrand. This is in contrast with `quad1d::Cag` which integrates both components "in parallel" such that every integrand evaluation can be fully utilized (see below for more details). For the comparison I reuse the integrand in **Example 1** and modify the functor to include a call counter,
+```C++
+struct Ftor {  //not thread-safe
+    explicit Ftor(const complex<double>& mu): mu(mu) { }
+    complex<double> operator()(double x) const { ++counter; return f_integrand(x, mu); }
+    complex<double> mu;
+    mutable size_t counter {0};
+};
+```
+which I then use as follows,
+```C++
+...
+    Ftor integrand(mu);
+    quad1d::Cag<Ftor> quad;
+    complex<double> abserr;
+    auto res = quad.integrate(integrand, 0., 1., abserr);
+    cout << "Result = " << res << endl;
+    cout << "Estimated error = " << abserr << endl;
+    cout << "Function calls = " << integrand.counter << endl;
+
+    integrand.counter = 0;
+
+    quad1d::Cag_gsl<Ftor> quad_gsl;
+    res = quad_gsl.integrate(integrand, 0., 1., abserr);
+    cout << "Result (GSL) = " << res << endl;
+    cout << "Estimated error (GSL) = " << abserr << endl;
+    cout << "Function calls (GSL) = " << integrand.counter << endl;
+```
+to give
+```sh
+Expected value = (-3.92401191889583165e-06,-6.31885976678998859e-07)
+Result = (-3.92401191889603409e-06,-6.31885976679864209e-07)
+Estimated error = (2.30461538976541977e-17,3.88190305613418434e-17)
+Function calls = 1147
+Result (GSL) = (-3.92401191889603239e-06,-6.31885976679851080e-07)
+Estimated error (GSL) = (2.89859102927190174e-17,3.88301820442891792e-17)
+Function calls (GSL) = 2232
+```
+Similarly, reusing the integrand in **Example 2** gives
+```sh
+Expected value = (8.37912751875862560e-01,-1.18061875415731632e+00)
+Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
+Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
+Function calls = 806
+Result (GSL) = (8.37912751875862449e-01,-1.18061875415731610e+00)
+Estimated error (GSL) = (4.75964513994949376e-11,1.55688200563444364e-11)
+Function calls (GSL) = 2220
+```
+in which `Cag` is almost three times more efficient. This is expected since, for (semi-)infinite intervals, `Cag_gsl` uses [`gsl_integration_qags`](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) which inherently does more work than [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). Also note that in these two comparisons, `Cag` and `Cag_gsl` both integrate with the same requested accuracy and Gauss-Kronrod rule.
