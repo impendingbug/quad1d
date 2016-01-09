@@ -13,7 +13,7 @@ Still I was a happy camper, until the primary bottleneck in my calculation was e
 
 ##Usage Examples
 ####Example 1
-Let us consider the integral `$\int_0^1 \frac{ \log(1+x) }{ (1+x)^{\mu+1} }$` with `$\mu$` being a complex number, which has a simple closed-form solution,
+Let us consider the integral `$\int_0^1 \frac{ \log(1+x) }{ (1+x)^{\mu+1} }{\rm d}x$` with `$\mu$` being a complex number, which has a simple closed-form solution,
 ```C++
 #include "quad1d/quad1d.hpp"
 #include <complex>
@@ -76,4 +76,44 @@ complex<double> dumb_integrand(double x) { return f_integrand(x, mu_global); }  
     res = sf_quad.integrate(sf_integrand, 0., 1., abserr);
 ```
 ####Example 2
-To compute integrals over **infinite** or **semi-infinite** intervals, you only need to explicitly set the upper or lower limit (or both) of the integral to negative or positive infinity. For this purpose, `quad1d::Cag` defines its own infinity types, so that it can enforce safe template instantiations. That is, depending on whether the upper or lower limit is finite, the compiler will instantiate the right overload of `quad1d::Cag::integrate` for the job, and only those pairs of integration limits that are supported will compile. 
+To compute integrals over **infinite** or **semi-infinite** intervals, you only need to explicitly set the upper or lower limit (or both) of the integral to negative or positive infinity. For this purpose, `quad1d::Cag` defines its own infinity types, so that it can enforce safe template instantiations. That is, depending on whether the upper or lower limit is finite, the compiler will instantiate the right overload of `quad1d::Cag::integrate` for the job, and only those pairs of integration limits that are supported will compile. As an example, let us compute $\int_{-\infty}^\infty \exp(-px^2 + qx) {\rm d}x$ for $\Re(p) > 0$,
+```C++
+#include "quad1d.hpp"
+#include <complex>
+#include <stdexcept>
+#include <iostream>
+
+using namespace std;
+
+complex<double> f_expected(const complex<double>& p, double q) {  //the closed-form solution
+    if (p.real() <= 0.) throw logic_error("f_expected() : re(p) must be > 0)");
+    return exp(0.25 * q * q / p) * sqrt(M_PI / p);
+}
+complex<double> f_integrand(double x, const complex<double>& p, double q) { return exp(-p * x * x + q * x); }
+struct Ftor {  //a wrapper functor
+    Ftor(complex<double> p, double q): p(p), q(q) { }
+    complex<double> operator()(double x) const { return f_integrand(x, p, q); }
+    complex<double> p;
+    double q;
+};
+
+int main() {
+    cout.precision(17); cout << scientific;
+    const auto p = 1. + complex<double>(0.,1.) * 2.;
+    const auto q = 2.;
+    cout << "Expected value = " << f_expected(p, q) << endl;
+
+    quad1d::Cag<Ftor> quad;
+    complex<double> abserr;
+    auto res = quad.integrate(Ftor(p, q), quad.neg_inf(), quad.pos_inf(), abserr);  //infinite interval
+    // For semi-infinite interval, use (lower, upper) = (quad.neg_inf(), b) or (a, quad.pos_inf()) 
+    cout << "Result = " << res << endl;
+    cout << "Estimated error = " << abserr << endl;
+}
+```
+which outputs
+```sh
+Expected value = (8.37912751875862560e-01,-1.18061875415731632e+00)
+Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
+Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
+```
