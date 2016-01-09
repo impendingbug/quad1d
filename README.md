@@ -118,5 +118,8 @@ Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
 Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
 ```
 *Usage notes:*
-1. A `std::bad_alloc` instance is thrown if the constructor fails to allocate memory for integration workspace.
-2. The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be recovered if one uses the version of `integrate` that returns `void`.
+* `quad1d::Cag` derives its interval-bisection procedure and error-estimation mechanism from [gsl_integration_qag](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). It is thus not intended for integrands containing singularities, for which `quad1d::Cag_gsl` is more suitable (see **Performance**).
+* Integrations over (semi-)infinite intervals involve variable transformations which might introduce integrable singularities in the integrands. In such cases, `quad1d::Cag_gsl` is the one to reach for as it internally uses [gsl_integration_qags](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) when handling (semi-)infinite intervals.
+* A `std::bad_alloc` instance is thrown if the constructor fails to allocate memory for integration workspace.
+* The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be recovered if one uses the version of `integrate` that returns `void` (see `quad1d/quad1d.hpp`).
+* The C routines wrapped by `quad1d::Cag` are declared in `quad1d/cr_quad1d.h`. Its API closely follows the [quadratures from GSL](https://www.gnu.org/software/gsl/manual/html_node/Numerical-Integration.html#Numerical-Integration).
