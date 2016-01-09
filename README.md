@@ -1,5 +1,5 @@
 #quad1d
-A collection of C routines (requires C99 or above) and C++ wrappers (requires C++11 or above) for efficient 1D numerical integrations of complex-valued functions. Features an adaptive quadrature based on Gauss-Kronrod rules and a fixed-order Gauss-Legendre quadrature, both of which perform "**proper**" integrations of complex-valued functions, i.e., *automatic* decomposition into two real-domain integrations **without** wasted integrand evaluations (see below for more details). These routines thus require approximately **half** the number of function evaluations, when compared with the commonly-deployed, *manual* decomposition into real domains. Also includes a unified C++ interface to some of the commonly-used quadratures from [GSL](http://www.gnu.org/software/gsl/). The latter serve as invaluable fallbacks when the "proper" adaptive quadrature chokes on difficult integrands.
+A collection of C routines (requires C99 or above) and C++ wrappers (requires C++11 or above) for efficient 1D numerical integrations of complex-valued functions. Features an adaptive quadrature based on Gauss-Kronrod rules and a fixed-order Gauss-Legendre quadrature, both of which perform "**proper**" integrations of complex-valued functions, i.e., *automatic* decomposition into two real-domain integrations **without** wasted integrand evaluations (see **Performance**). These routines thus require approximately **half** the number of function evaluations, when compared with the commonly-deployed, *manual* decomposition into real domains. Also includes a unified C++ interface to some of the commonly-used quadratures from [GSL](http://www.gnu.org/software/gsl/). The latter serve as invaluable fallbacks when the "proper" adaptive quadrature chokes on difficult integrands.
 
 ##Dependencies
 [GSL](http://www.gnu.org/software/gsl/) and [Boost](http://www.boost.org/)
@@ -118,8 +118,11 @@ Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
 Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
 ```
 *Usage notes:*
+* The callables are passed to the `integrate` method by reference-to-`const`. A functor object passed to it thus must have a `const` overload of its `operator()`. But it need not be copy- nor move-constructible. I always find this more convenient. 
 * `quad1d::Cag` derives its interval-bisection procedure and error-estimation mechanism from [gsl_integration_qag](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). It is thus not intended for integrands containing singularities, for which `quad1d::Cag_gsl` is more suitable (see **Performance**).
 * Integrations over (semi-)infinite intervals involve variable transformations which might introduce integrable singularities in the integrands. In such cases, `quad1d::Cag_gsl` is the one to reach for as it internally uses [gsl_integration_qags](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) when handling (semi-)infinite intervals.
 * A `std::bad_alloc` instance is thrown if the constructor fails to allocate memory for integration workspace.
-* The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be recovered if one uses the version of `integrate` that returns `void` (see `quad1d/quad1d.hpp`).
+* The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be accessed if one uses the version of `integrate` that returns `void` (see `quad1d/quad1d.hpp`).
 * The C routines wrapped by `quad1d::Cag` are declared in `quad1d/cr_quad1d.h`. Its API closely follows the [quadratures from GSL](https://www.gnu.org/software/gsl/manual/html_node/Numerical-Integration.html#Numerical-Integration).
+
+##Performance
