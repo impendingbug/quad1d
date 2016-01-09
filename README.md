@@ -117,3 +117,6 @@ Expected value = (8.37912751875862560e-01,-1.18061875415731632e+00)
 Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
 Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
 ```
+*Usage notes:*
+1. A `std::bad_alloc` instance is thrown if the constructor fails to allocate memory for integration workspace.
+2. The `integrate` method throws `std::logic_error` or `std::runtime_error`. In the latter case, the integration result can still be recovered if one uses the version of `integrate` that returns `void`.
