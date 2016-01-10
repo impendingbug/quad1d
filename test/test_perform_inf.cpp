@@ -1,5 +1,5 @@
 /**
- *  \file  test_cag_inf.cpp
+ *  \file  test_perform_inf.cpp
  *  \brief  
  *
  *  <+DETAILED+>
@@ -7,7 +7,7 @@
  *  \author  Sandy Pratama
  *
  *  \internal
- *       Created:  05-01-16
+ *       Created:  10-01-16
  *      Revision:  none
  *      Compiler:  gcc -std=c11 -pedantic
  *  Organization:  DINS, Utrecht
@@ -31,11 +31,12 @@ complex<double> f_expected(const complex<double>& p, double q) {  //the closed-f
 complex<double> f_integrand(double x, const complex<double>& p, double q) {  //the integrand
     return exp(-p * x * x + q * x);
 }
-struct Ftor {  //a wrapper functor
+struct Ftor {  //not thread-safe
     Ftor(complex<double> p, double q): p(p), q(q) { }
-    complex<double> operator()(double x) const { return f_integrand(x, p, q); }
+    complex<double> operator()(double x) const { ++counter; return f_integrand(x, p, q); }
     complex<double> p;
     double q;
+    mutable size_t counter {0};
 };
 
 int main() {
@@ -44,10 +45,20 @@ int main() {
     const auto q = 2.;
     cout << "Expected value = " << f_expected(p, q) << endl;
 
+    Ftor integrand(p, q);
     quad1d::Cag<Ftor> quad;
     complex<double> abserr;
-    auto res = quad.integrate(Ftor(p, q), quad.neg_inf(), quad.pos_inf(), abserr);  //infinite interval
-    // For semi-infinite interval, use (lower, upper) = (quad.neg_inf(), b) or (a, quad.pos_inf()) 
+    auto res = quad.integrate(integrand, quad.neg_inf(), quad.pos_inf(), abserr);
     cout << "Result = " << res << endl;
     cout << "Estimated error = " << abserr << endl;
+    cout << "Function calls = " << integrand.counter << endl;
+
+    integrand.counter = 0;
+
+    quad1d::Cag_gsl<Ftor> quad_gsl;
+    res = quad_gsl.integrate(integrand, quad.neg_inf(), quad.pos_inf(), abserr);
+    cout << "Result (GSL) = " << res << endl;
+    cout << "Estimated error (GSL) = " << abserr << endl;
+    cout << "Function calls (GSL) = " << integrand.counter << endl;
 }
+

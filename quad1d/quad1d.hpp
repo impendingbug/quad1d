@@ -56,6 +56,7 @@ protected:
 
 //**************************************************************************************
 
+//Available Gauss-Kronrod rules
 enum class GK_rule: int { GK15 = 1, GK21 = 2, GK31 = 3, GK41 = 4, GK51 = 5, GK61 = 6 };
 
 template<typename Res, typename Func>
@@ -349,8 +350,8 @@ public:
 
     void
     integrate_sing(const Func& func, double a, double b, cx_double &res, cx_double& abserr, std::size_t limit = 2000) {
-        Re_t<Func> re_func(*this->mpfunc);
-        Im_t<Func> im_func(*this->mpfunc);
+        Re_t<Func> re_func(func);
+        Im_t<Func> im_func(func);
         double re, im, err_re, err_im;
 
         mquad.set_acc(this->mepsrel.real(), this->mepsabs.real());
