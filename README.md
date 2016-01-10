@@ -118,7 +118,7 @@ Result = (8.37912751875862005e-01,-1.18061875415731632e+00)
 Estimated error = (6.85431097035958387e-14,1.17011564912306070e-13)
 ```
 *Usage notes:*
-* The callables are passed to the `integrate` method by a reference-to-`const`. A functor object passed to it thus must have a `const` overload of its `operator()`. But it need not be copy- nor move-constructible. I always find this more convenient. 
+* The callables are passed to the `integrate` method by a reference-to-`const` (be careful detaching your thread). A functor object passed to it thus must have a `const` overload of its `operator()`. But it need not be copy- nor move-constructible. I always find this more convenient. An added benefit is that a single `quad1d::Cag` instance can handle many functor objects of different types by making use of polymorphism.
 * `quad1d::Cag` derives its interval-bisection procedure and error-estimation mechanism from [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). It is thus not intended for integrands containing singularities, for which `quad1d::Cag_gsl` is more suitable (see **Performance**).
 * Integrations over (semi-)infinite intervals involve variable transformations which might introduce integrable singularities in the integrands. In such cases, `quad1d::Cag_gsl` is the one to reach for as it internally uses [`gsl_integration_qags`](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) when handling (semi-)infinite intervals.
 * An instance of `std::bad_alloc` is thrown if the constructor fails to allocate memory for integration workspace.
@@ -174,7 +174,24 @@ Result (GSL) = (8.37912751875862449e-01,-1.18061875415731610e+00)
 Estimated error (GSL) = (4.75964513994949376e-11,1.55688200563444364e-11)
 Function calls (GSL) = 2220
 ```
-in which `Cag` is almost three times more efficient. This is expected since, for (semi-)infinite intervals, `Cag_gsl` uses [`gsl_integration_qags`](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) which inherently does more work than [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). Also note that in these two comparisons, `Cag` and `Cag_gsl` both integrate with the same requested accuracy and Gauss-Kronrod rule.
+in which `Cag` is almost three (instead of two) times more efficient. This is expected since, for (semi-)infinite intervals, `Cag_gsl` uses [`gsl_integration_qags`](https://www.gnu.org/software/gsl/manual/html_node/QAGS-adaptive-integration-with-singularities.html#QAGS-adaptive-integration-with-singularities) which inherently does more work than [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html). Also note that in these two comparisons, `Cag` and `Cag_gsl` both integrate with the same requested accuracy and Gauss-Kronrod rule.
 
 *More details:*
-`quad1d::Cag` is as reliable as [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html) as they both share the same underlying algorithm (from [QUADPACK](http://www.netlib.org/quadpack/)). This algorithm keeps track of the estimated error of each integration subinterval, and in each iteration, it bisects the subinterval with the largest error. The iteration stops when either the requested accuracy has been achieved, the maximum number of iterations has been reached, or it is decided that further iterations will no longer improve accuracy due to round-off errors. `Cag` simply ensures that *every* integrand evaluation is used to improve integration accuracy of both the real and imaginary components. To achieve this, the two real-domain integrations are forced to share the same set of subintervals. The right to pick which subinterval to bisect is passed back and forth between the two domains, thus retaining the desired capability of isolating "bad" regions in both domains. If, for instance, the real-part integration achieves its requested accuracy before the imaginary part, all upcoming bisections are chosen by the imaginary-part integration, while the real-part result still benefits from each of these bisections. 
+`quad1d::Cag` is as reliable as [`gsl_integration_qag`](https://www.gnu.org/software/gsl/manual/html_node/QAG-adaptive-integration.html) as they both share the same underlying algorithm (from [QUADPACK](http://www.netlib.org/quadpack/)). This algorithm keeps track of the estimated error of each integration subinterval, and at each iteration, it bisects the subinterval with the largest error. The iteration stops when either the requested accuracy has been achieved, the maximum number of iterations has been reached, or it is decided that further iterations will no longer improve accuracy due to round-off errors. `Cag` simply ensures that *every* integrand evaluation is used to improve integration accuracy of both the real and imaginary components. To achieve this, the two real-domain integrations are forced to share the same set of subintervals. The right to pick which subinterval to bisect is passed back and forth between the two domains, thus retaining the desired capability of isolating "bad" regions in both domains. If, for instance, the real-part integration achieves its requested accuracy before the imaginary part, all upcoming bisections are chosen by the imaginary-part integration, while the real-part result still benefits from each of these bisections. 
+
+##Compiling and Linking
+To compile, `cd` into the outer `quad1d` directory and run `make`. This will create the static library `libquad1d.a` which you can link to by, e.g.,
+```sh
+g++ -std=c++11 -Wall -I./quad1d -c example.cpp
+g++ example.o -L./quad1d -lquad1d -lgsl -lgslcblas -lm -o example
+```
+assuming that `quad1d` directory is in `./`, while the GSL library and the Boost headers are installed in their default locations. The relevant header files can be found in `quad1d/quad1d` subdirectory. Thus `example.cpp` needs either
+```C++
+#include "quad1d/quad1d.hpp"  //use C++ interface
+```
+or
+```C
+#include "quad1d/cr_quad1d.h"  //use C interface
+```
+(see also **Usage Examples**).
+
