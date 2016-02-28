@@ -21,7 +21,7 @@
 #ifndef quad1d_hpp_INCLUDED
 #define quad1d_hpp_INCLUDED
 
-#include "cr_quad1d.h"
+#include "quad1d/cr_quad1d.h"
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_errno.h>
 #include <boost/current_function.hpp>
