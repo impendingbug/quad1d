@@ -9,7 +9,7 @@
  *  \internal
  *       Created:  12-12-15
  *      Revision:  none
- *      Compiler:  gcc -std=c11 -pedantic
+ *      Compiler:  g++ -std=c++11 -pedantic
  *  Organization:  DINS, Utrecht
  *
  *  Copyright (C) 2014 Sandy Pratama
