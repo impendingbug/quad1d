@@ -21,7 +21,7 @@
 #ifndef cr_quad1d_INCLUDED
 #define cr_quad1d_INCLUDED
 
-#include "cr_function.h"
+#include "quad1d/cr_function.h"
 
 #include <stdlib.h>
 #include <complex.h>
